@@ -30,11 +30,11 @@ router.post('/register', async (req, res) => {
       the response body should include a string exactly as follows: "username taken".
   */
   const user = await auth.findBy({ username: req.body.username })
-  if (user) {
-    res.status(500).json({message: 'username taken'})
-  }
-  else if (!req.body.username || !req.body.password) {
+  if (!req.body.username || !req.body.password) {
     res.status(401).json({message: "username and password required"})
+  }
+  else if (user) {
+    res.status(500).json({message: 'username taken'})
   }
   else {
     let user = req.body
