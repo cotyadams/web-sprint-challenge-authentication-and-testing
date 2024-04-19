@@ -77,11 +77,13 @@ router.post('/login', async (req, res) => {
   */
   const { username, password } = req.body
   if (!username || !password) {
-    res.status(400).json({message: 'username and password required'})
+    res.status(400).json({ message: 'username and password required' })
+    return
   }
   const user = await auth.findBy({ username })
   if (!user ||!bcrypt.compareSync(password, user.password)) {
-    res.status(400).json({message: 'invalid credentials'})
+    res.status(400).json({ message: 'invalid credentials' })
+    return
   }
   if (user && bcrypt.compareSync(password, user.password)) {
     const token = generateToken(user)
