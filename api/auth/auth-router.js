@@ -1,7 +1,9 @@
 const router = require('express').Router();
-
-router.post('/register', (req, res) => {
-  res.end('implement register, please!');
+const auth = require('./auth-model')
+const bcrypt = require('bcryptjs')
+const { BCRYPT_ROUNDS, JWT_SECRET } = require('../secrets/index')
+const jwt = require('jsonwebtoken')
+router.post('/register', async (req, res) => {
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -27,10 +29,29 @@ router.post('/register', (req, res) => {
     4- On FAILED registration due to the `username` being taken,
       the response body should include a string exactly as follows: "username taken".
   */
+  const user = await auth.findBy({ username: req.body.username })
+  if (user) {
+    res.status(500).json({message: 'username taken'})
+  }
+  else if (!req.body.username || !req.body.password) {
+    res.status(401).json({message: "username and password required"})
+  } else if (!req.body.id) {
+    res.status(401).json({message: "id required"})
+  }
+  else {
+    let user = req.body
+    user.username = user.username.trim()
+    user.password = user.password.trim()
+
+    let hash = bcrypt.hashSync(user.password, BCRYPT_ROUNDS)
+
+    user.password = hash
+    const newUser = await auth.insert(user)
+    res.status(201).json(newUser)
+  }
 });
 
-router.post('/login', (req, res) => {
-  res.end('implement login, please!');
+router.post('/login', async (req, res) => {
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -54,6 +75,30 @@ router.post('/login', (req, res) => {
     4- On FAILED login due to `username` not existing in the db, or `password` being incorrect,
       the response body should include a string exactly as follows: "invalid credentials".
   */
+  const { username, password } = req.body
+  if (!username || !password) {
+    res.status(400).json({message: 'username and password required'})
+  }
+  const user = await auth.findBy({ username })
+  if (!user ||!bcrypt.compareSync(password, user.password)) {
+    res.status(400).json({message: 'invalid credentials'})
+  }
+  if (user && bcrypt.compareSync(password, user.password)) {
+    const token = generateToken(user)
+    res.status(200).json({
+      message: `welcome, ${username}`,
+      token
+    })
+  }
 });
-
+const generateToken = (user) => {
+  const payload = {
+    username: user.username,
+    password: user.password
+  }
+  const options = {
+    expiresIn: '1d'
+  }
+  return jwt.sign(payload, JWT_SECRET, options)
+}
 module.exports = router;
